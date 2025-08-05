@@ -7,5 +7,6 @@ streamlit
 openpyxl
 numpy
 pyzbar
+requests
 
 
