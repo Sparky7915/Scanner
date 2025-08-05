@@ -1,13 +1,16 @@
-import cv2
+import streamlit as st
 import pandas as pd
 import os
+import cv2
+import numpy as np
 
-# Initialize the webcam
-cap = cv2.VideoCapture(0)
-detector = cv2.QRCodeDetector()
+# Streamlit title
+st.title("QR Code Scanner with Streamlit")
+
+# File to store scanned QR codes
+excel_file = 'scanned_qrcode_camera.xlsx'
 
 # Load existing scanned codes
-excel_file = 'scanned_qrcode_camera.xlsx'
 if os.path.exists(excel_file):
     try:
         df_existing = pd.read_excel(excel_file)
@@ -17,32 +20,34 @@ if os.path.exists(excel_file):
 else:
     scanned_codes = set()
 
-print("Scan QR codes. Each new code will be saved only once. Press 'q' to quit.")
+# Camera input widget for user to capture an image
+img_file = st.camera_input("Take a picture to scan QR code")
 
-while True:
-    ret, img = cap.read()
-    if not ret:
-        print("Failed to grab frame. Is your camera on?")
-        break
+if img_file:
+    # Convert image to OpenCV format
+    file_bytes = np.asarray(bytearray(img_file.read()), dtype=np.uint8)
+    img = cv2.imdecode(file_bytes, 1)
 
+    detector = cv2.QRCodeDetector()
     data, bbox, _ = detector.detectAndDecode(img)
     if data:
         clean = data.strip()
         if clean and (clean not in scanned_codes):
-            print(f"Scanned: {clean}")
+            st.success(f"Scanned: {clean}")
             scanned_codes.add(clean)
+        else:
+            st.info("Code already scanned or not found.")
+    else:
+        st.warning("No QR code detected. Try taking a clearer picture.")
 
-    cv2.imshow("QR Scanner - Press 'q' to save and exit", img)
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-
-cap.release()
-cv2.destroyAllWindows()
-
-# Save results
-if scanned_codes:
+    # Save to Excel on every new scan
     df = pd.DataFrame({'Scanned QR Data': list(scanned_codes)})
     df.to_excel(excel_file, index=False)
-    print(f"Saved all scanned codes to {excel_file}")
+    st.write("All scanned codes saved.")
+
+# Display list of all scanned codes
+if scanned_codes:
+    st.subheader("Scanned QR Codes")
+    st.dataframe(pd.DataFrame({'Scanned QR Data': list(scanned_codes)}))
 else:
-    print("No QR codes detected/scanned.")
+    st.info("No QR codes detected/scanned yet.")
