@@ -7,16 +7,6 @@ st.title("QR Code Scanner and Attendance Tracker")
 
 excel_file = 'scanned_qrcode_attendance.xlsx'
 
-# Add a button to clear all attendance data
-if st.button("Clear All Attendance Data 🗑️"):
-    if os.path.exists(excel_file):
-        os.remove(excel_file)
-        st.success("All attendance data cleared!")
-    else:
-        st.info("No attendance data file found to clear.")
-    # Reset session data
-    st.stop()  # Stops execution after clearing
-
 # Initialize or load attendance data
 if os.path.exists(excel_file):
     try:
@@ -84,3 +74,14 @@ if evening_codes:
     st.dataframe(pd.DataFrame({'Evening Attendance': list(evening_codes)}))
 else:
     st.info("No evening attendance recorded yet.")
+
+# Add a button to clear all attendance data at the end
+if st.button("Clear All Attendance Data 🗑️"):
+    if os.path.exists(excel_file):
+        os.remove(excel_file)
+        st.success("All attendance data cleared!")
+        # Clear the sets in memory as well
+        morning_codes.clear()
+        evening_codes.clear()
+    else:
+        st.info("No attendance data file found to clear.")
