@@ -2,12 +2,12 @@ import streamlit as st
 import pandas as pd
 import os
 import requests
+from datetime import datetime
 
 st.title("QR Code Scanner and Attendance Tracker")
 
 excel_file = 'scanned_qrcode_attendance.xlsx'
 
-# Extended attendance slots
 slots = [
     'Morning',
     'Evening',
@@ -16,9 +16,17 @@ slots = [
     'Breakfast - D2'
 ]
 
-# Helper to initialize or read data for each slot
+# Helper functions
 def load_codes(sheet, df_existing):
-    return set(df_existing.get(sheet, pd.DataFrame(columns=['Scanned QR Data']))['Scanned QR Data'].astype(str))
+    if sheet in df_existing:
+        df = df_existing[sheet]
+        if 'Scanned QR Data' in df.columns and 'Timestamp' in df.columns:
+            return dict(zip(df['Scanned QR Data'].astype(str), df['Timestamp'].astype(str)))
+        else:
+            # Legacy: only codes, no timestamps
+            return {val: "" for val in df['Scanned QR Data'].astype(str)}
+    else:
+        return {}
 
 # Load or initialize attendance data for all slots
 if os.path.exists(excel_file):
@@ -26,9 +34,9 @@ if os.path.exists(excel_file):
         df_existing = pd.read_excel(excel_file, sheet_name=None)
         slot_codes = {slot: load_codes(slot, df_existing) for slot in slots}
     except Exception as e:
-        slot_codes = {slot: set() for slot in slots}
+        slot_codes = {slot: {} for slot in slots}
 else:
-    slot_codes = {slot: set() for slot in slots}
+    slot_codes = {slot: {} for slot in slots}
 
 attendance_slot = st.radio("Select attendance slot:", slots)
 
@@ -48,31 +56,35 @@ if img_file:
 
     if result:
         clean = result.strip()
-        scanned_set = slot_codes[attendance_slot]
+        scanned_dict = slot_codes[attendance_slot]
 
-        if clean and (clean not in scanned_set):
-            scanned_set.add(clean)
-            st.success(f"{attendance_slot} Attendance marked for: {clean}")
+        if clean and (clean not in scanned_dict):
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            scanned_dict[clean] = timestamp
+            st.success(f"{attendance_slot} Attendance marked for: {clean} at {timestamp}")
         elif clean:
-            st.info(f"{attendance_slot} attendance already marked for: {clean}")
+            st.info(f"{attendance_slot} attendance already marked for: {clean} at {scanned_dict[clean]}")
     else:
         st.warning("No QR code detected or unreadable. Please try again.")
 
-    # Save updated attendance with section titles in Excel sheets (using casing as requested)
+    # Save updated attendance with timestamp and custom section titles
     with pd.ExcelWriter(excel_file) as writer:
         for slot in slots:
             section_title = f"{slot} attendance"
-            df_slot = pd.DataFrame({'Scanned QR Data': list(slot_codes[slot])})
+            slot_items = list(slot_codes[slot].items())
+            df_slot = pd.DataFrame(slot_items, columns=['Scanned QR Data', 'Timestamp'])
             pd.DataFrame({'': [section_title]}).to_excel(writer, index=False, header=False, sheet_name=slot)
             df_slot.to_excel(writer, index=False, startrow=1, sheet_name=slot)
 
     st.write(f"Saved {attendance_slot} attendance to '{excel_file}' in respective sheet.")
 
-# Display attendance per slot with proper headings
+# Display attendance per slot with proper headings and timestamps
 for slot in slots:
     st.subheader(f"{slot} Attendance")
-    if slot_codes[slot]:
-        st.dataframe(pd.DataFrame({f"{slot} Attendance": list(slot_codes[slot])}))
+    data = slot_codes[slot]
+    if data:
+        df_display = pd.DataFrame([(k, v) for k, v in data.items()], columns=[f"{slot} Attendance", "Timestamp"])
+        st.dataframe(df_display)
     else:
         st.info(f"No {slot.lower()} attendance recorded yet.")
 
@@ -81,7 +93,7 @@ if st.button("Clear All Attendance Data 🗑️"):
     if os.path.exists(excel_file):
         os.remove(excel_file)
         st.success("All attendance data cleared!")
-        # Clear the sets in memory as well
+        # Clear the dicts in memory as well
         for slot in slots:
             slot_codes[slot].clear()
     else:
