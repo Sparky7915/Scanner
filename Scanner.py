@@ -56,8 +56,8 @@ if img_file:
         print("No QR code detected or unreadable.")
 
     # Save updated attendance with section titles in Excel sheets
-    df_morning = pd.DataFrame({'Scanned QR Data': list(morning_codes)})
-    df_evening = pd.DataFrame({'Scanned QR Data': list(evening_codes)})
+    df_morning = pd.DataFrame({'Scanned QR Data - Morning': list(morning_codes)})
+    df_evening = pd.DataFrame({'Scanned QR Data - Evening': list(evening_codes)})
 
     with pd.ExcelWriter(excel_file) as writer:
         # Write title row, then actual data beneath it
@@ -82,3 +82,4 @@ if evening_codes:
     st.dataframe(pd.DataFrame({'Scanned QR Data': list(evening_codes)}))
 else:
     st.info("No evening attendance recorded yet.")
+
