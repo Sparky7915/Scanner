@@ -55,13 +55,17 @@ if img_file:
         st.warning("No QR code detected or unreadable. Please try again.")
         print("No QR code detected or unreadable.")
 
-    # Save updated attendance
+    # Save updated attendance with section titles in Excel sheets
     df_morning = pd.DataFrame({'Scanned QR Data': list(morning_codes)})
     df_evening = pd.DataFrame({'Scanned QR Data': list(evening_codes)})
 
     with pd.ExcelWriter(excel_file) as writer:
-        df_morning.to_excel(writer, sheet_name='Morning', index=False)
-        df_evening.to_excel(writer, sheet_name='Evening', index=False)
+        # Write title row, then actual data beneath it
+        pd.DataFrame({'': ['Morning Attendance']}).to_excel(writer, index=False, header=False, sheet_name='Morning')
+        df_morning.to_excel(writer, index=False, startrow=1, sheet_name='Morning')
+
+        pd.DataFrame({'': ['Evening Attendance']}).to_excel(writer, index=False, header=False, sheet_name='Evening')
+        df_evening.to_excel(writer, index=False, startrow=1, sheet_name='Evening')
 
     st.write(f"Saved {attendance_slot} attendance to '{excel_file}' in respective sheet.")
     print(f"Saved {attendance_slot} attendance to '{excel_file}' with sheets: Morning and Evening.")
