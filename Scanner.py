@@ -3,6 +3,7 @@ import pandas as pd
 import os
 import requests
 from datetime import datetime
+import pytz  # For timezone handling
 
 st.title("QR Code Scanner and Attendance Tracker")
 
@@ -59,7 +60,9 @@ if img_file:
         scanned_dict = slot_codes[attendance_slot]
 
         if clean and (clean not in scanned_dict):
-            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            # Set timezone to Indian Standard Time (IST)
+            ist = pytz.timezone('Asia/Kolkata')
+            timestamp = datetime.now(ist).strftime('%Y-%m-%d %H:%M:%S')
             scanned_dict[clean] = timestamp
             st.success(f"{attendance_slot} Attendance marked for: {clean} at {timestamp}")
         elif clean:
