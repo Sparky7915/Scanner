@@ -1,10 +1,9 @@
 import streamlit as st
 import pandas as pd
 import os
-from pyzbar.pyzbar import decode
-from PIL import Image
+import requests
 
-st.title("QR Code Scanner with Streamlit (No OpenCV!)")
+st.title("QR Code Scanner with Streamlit (API-Based, Cloud-Friendly)")
 
 # File to store scanned QR codes
 excel_file = 'scanned_qrcode_camera.xlsx'
@@ -19,30 +18,37 @@ if os.path.exists(excel_file):
 else:
     scanned_codes = set()
 
-# Camera input widget for user to capture an image
 img_file = st.camera_input("Take a picture of the QR code")
 
 if img_file:
-    img = Image.open(img_file)
-    results = decode(img)
+    api_url = "https://api.qrserver.com/v1/read-qr-code/"
+    files = {"file": img_file.getvalue()}
+    with st.spinner("Scanning..."):
+        try:
+            res = requests.post(api_url, files=files, timeout=20)
+            res.raise_for_status()
+            out = res.json()
+            result = out[0]["symbol"][0]["data"]
+        except:
+            result = None
 
     found_codes = set()
-    for barcode in results:
-        data = barcode.data.decode('utf-8').strip()
-        if data and (data not in scanned_codes):
-            found_codes.add(data)
-            scanned_codes.add(data)
-            st.success(f"Scanned: {data}")
-        elif data:
-            st.info(f"Already scanned: {data}")
-
-    if not found_codes:
-        st.warning("No new QR code detected. Try retaking the picture.")
+    if result:
+        clean = result.strip()
+        if clean and (clean not in scanned_codes):
+            found_codes.add(clean)
+            scanned_codes.add(clean)
+            st.success(f"Scanned: {clean}")
+        elif clean:
+            st.info(f"Already scanned: {clean}")
+    else:
+        st.warning("No QR code detected or this code is unreadable.")
 
     # Save to Excel on every new scan
-    df = pd.DataFrame({'Scanned QR Data': list(scanned_codes)})
-    df.to_excel(excel_file, index=False)
-    st.write("All scanned codes saved.")
+    if found_codes:
+        df = pd.DataFrame({'Scanned QR Data': list(scanned_codes)})
+        df.to_excel(excel_file, index=False)
+        st.write("All scanned codes saved.")
 
 # Display list of all scanned codes
 if scanned_codes:
