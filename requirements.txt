@@ -6,4 +6,6 @@ qrcode==8.2
 streamlit
 openpyxl
 numpy
+pyzbar
+
 
